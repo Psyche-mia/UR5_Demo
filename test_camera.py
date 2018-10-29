@@ -20,12 +20,11 @@ def line_intersection(line1, line2):
 
 
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture("/dev/video8")
 
 while(True):
 	# Capture frame-by-frame
 	ret, image = cap.read()
-	width, height =image.shape[:2]
 	hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 	
 	#find lines in the image
@@ -51,8 +50,6 @@ while(True):
 	
 	if lines==None:
 		cv2.imshow('frame',image)
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
 		continue
 		
 	#if len(lines) != 4:
@@ -102,23 +99,43 @@ while(True):
 	
 	# Display the resulting frame
 	cv2.imshow('frame',image)
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		break
 		
 	try:
-		#A = line_intersection(line_points[0], line_points[1])
-		#B = line_intersection(line_points[0], line_points[2])
-		#C = line_intersection(line_points[1], line_points[3])
-		#D = line_intersection(line_points[2], line_points[3])
 		A = line_intersection(line0, line1)
 		B = line_intersection(line0, line2)
 		C = line_intersection(line1, line3)
 		D = line_intersection(line2, line3)
-		bm = cv_ttt.boardMap(mask,A,B,C,D)
+		
+		for i in range(4):
+			cap.grab()
+		ret, image2 = cap.read()
+		cv2.imshow('frame2',image2)
+		
+		bm = cv_ttt.boardMap(image2,A,B,C,D)
+		
+		# Capture new frame
+		cv2.waitKey(0)
+		for i in range(4):
+			cap.grab()
+		ret, image3 = cap.read()
+		cv2.imshow('frame3',image3)		
+		cv2.waitKey(0)
+
+		print(bm.getUserPosition(image3))
 		print(A,B,C,D)
 		
+		# When everything done, release the capture
+		cap.release()
+		cv2.destroyAllWindows()
+		break
+		
 	except Exception as e:
+		import traceback
+		traceback.print_exc()
 		print(e)
+		
+	except KeyboardInterrupt:
+		break
     
 
 # When everything done, release the capture
