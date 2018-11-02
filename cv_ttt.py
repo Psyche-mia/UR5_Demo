@@ -13,7 +13,7 @@ class boardMap():
 		self.D = D
 		self.savedImage = img
 
-	def updateSavedImage(img):
+	def updateSavedImage(self,img):
 		self.savedImage = img
 
 	def getUserPosition(self,img):
@@ -31,7 +31,22 @@ class boardMap():
 		lower = numpy.array([30,0,0],numpy.uint8)
 		upper = numpy.array([179,100,80],numpy.uint8)
 		
+		lowerH = numpy.array([0,20,0],numpy.uint8)
+		upperH = numpy.array([30,255,255],numpy.uint8)
+		
 		hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+		
+		# check for hand
+		maskH = cv2.inRange(hsv, lowerH, upperH)
+		_, cntH, heirarchy = cv2.findContours(maskH[:], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		contourLengthH  = len(cntH)
+		if contourLengthH > 0:
+			for i in range(contourLengthH):
+				if cv2.contourArea(cntH[i]) > 500:
+					return 0
+					#pass
+		
+		# find difference
 		mask = cv2.inRange(hsv, lower, upper)
 		
 		hsv2 = cv2.cvtColor(self.savedImage, cv2.COLOR_BGR2HSV)
@@ -39,14 +54,16 @@ class boardMap():
 		
 		fgmask = mask - mask2
 		
-		# erode and dilate
-		cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, numpy.ones((5,5)))
+		# dilate and erode
+		fgmask2 = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, numpy.ones((5,5)))
+		# dilate
+		#fgmask3 = cv2.dilate(fgmask, numpy.ones((11,11)))
 		
 		# find contours in the thresholded image
-		_, cnts, heirarchy = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		_, cnts, heirarchy = cv2.findContours(fgmask2[:], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 		
-		cv2.imshow("Mask", fgmask)
-		cv2.waitKey(0)
+		#cv2.imshow("Mask", maskH)
+		#cv2.waitKey(0)
 		
 		contourLength  = len(cnts)
 		# Check for at least one target found
@@ -58,19 +75,29 @@ class boardMap():
 		## Loop through all of the contours, and get their areas
 		area = [0.0]*contourLength
 		for i in range(contourLength):
-			area[i] = cv2.contourArea(cnts[i])
+			a = cv2.contourArea(cnts[i])
+			if a > 40:
+				area[i] = a 
 
 		#### Target #### the largest object
-		c = cnts[area.index(max(area))]
+		maxA = max(area)
+		#print(maxA)
+		if maxA < 1:
+			return 0
+		c = cnts[area.index(maxA)]
+		#print(max(area))
 		# show the output image
 		cv2.drawContours(img, [c], -1, (0, 255, 0), 2)
 		cv2.imshow("Image", img)
 		cv2.waitKey(0)
+		#if cv2.waitKey(1) & 0xFF == ord('q'):
+		#	pass
+
 		# compute the center of the contour
 		M = cv2.moments(c)
 		cX = int(M["m10"] / M["m00"])
 		cY = int(M["m01"] / M["m00"])
-		print(cX,cY)
+		#print(cX,cY)
 		
 		if cY < Ay:
 			if cX < Ax:

@@ -20,7 +20,7 @@ def line_intersection(line1, line2):
 
 
 
-cap = cv2.VideoCapture("/dev/video8")
+cap = cv2.VideoCapture("/dev/video28")
 
 while(True):
 	# Capture frame-by-frame
@@ -33,23 +33,17 @@ while(True):
 	mask = cv2.inRange(hsv, lower, upper)
 
 	# dilate and erode
-	cv2.morphologyEx(mask, cv2.MORPH_CLOSE, numpy.ones((26,26))) 
+	mask2 = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, numpy.ones((26,26))) 
 	# erode and dilate
-	cv2.morphologyEx(mask, cv2.MORPH_OPEN, numpy.ones((5,5)))
+	# mask3 = cv2.morphologyEx(mask2, cv2.MORPH_OPEN, numpy.ones((5,5)))
 	
 	# find lines
-	lines = cv2.HoughLines(mask,1,3*numpy.pi/180, 250)
+	lines = cv2.HoughLines(mask2,1,3*numpy.pi/180, 200)
 	
-	_, contours, heirarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-	cv2.drawContours(image, contours, -1, (0, 0, 255), 3)
-	
-	#gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-	#edges = cv2.Canny(gray,25,50,apertureSize = 3)
-	#lines = cv2.HoughLines(edges,5,5*numpy.pi/180,300)
-
-	
-	if lines==None:
+	if lines.any()==None:
 		cv2.imshow('frame',image)
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			break
 		continue
 		
 	#if len(lines) != 4:
@@ -73,43 +67,71 @@ while(True):
 		
 		cv2.line(image,(x1,y1),(x2,y2),(0,255,0),2)
 		line_points.append(((x1,y1),(x2,y2)))
-		
+		print(rho, theta)
 		# Horizontal
 		if theta <= 3*numpy.pi/4 and theta > numpy.pi/4:
 			if rhoH == 0:
 				rhoH = rho
 				lineH = ((x1,y1),(x2,y2))
-			elif rho < rhoH-20:
+			elif rho < rhoH-50:
 				line0 = ((x1,y1),(x2,y2))
 				line3 = lineH
-			elif rho > rhoH+20:
+			elif rho > rhoH+50:
 				line3 = ((x1,y1),(x2,y2))
 				line0 = lineH
 		# Vertical
 		else:
+			rho = abs(rho)
 			if rhoV == 0:
 				rhoV = rho
 				lineV = ((x1,y1),(x2,y2))
-			elif rho < rhoV-20:
+			elif rho < rhoV-50:
 				line1 = ((x1,y1),(x2,y2))
 				line2 = lineV
-			elif rho > rhoV+20:
+			elif rho > rhoV+50:
 				line2 = ((x1,y1),(x2,y2))
 				line1 = lineV
 	
 	# Display the resulting frame
 	cv2.imshow('frame',image)
+	if cv2.waitKey(1) & 0xFF == ord('q'):
+		break
 		
 	try:
-		A = line_intersection(line0, line1)
-		B = line_intersection(line0, line2)
-		C = line_intersection(line1, line3)
-		D = line_intersection(line2, line3)
+		p1 = line_intersection(line0, line1)
+		p2 = line_intersection(line0, line2)
+		p3 = line_intersection(line1, line3)
+		p4 = line_intersection(line2, line3)
 		
+		if p1[1] < p3[1]:
+			if p1[0] < p2[0]:
+				A = p1
+				B = p2 
+				C = p3
+				D = p4
+			else:
+				A = p2
+				B = p1
+				C = p4
+				D = p3
+		else:
+			if p1[0] < p2[0]:
+				A = p3
+				B = p4
+				C = p1
+				D = p2
+			else:
+				A = p4
+				B = p3
+				C = p2
+				D = p1
+			
 		for i in range(4):
 			cap.grab()
 		ret, image2 = cap.read()
-		cv2.imshow('frame2',image2)
+		#cv2.imshow('frame2',image2)
+		#if cv2.waitKey(1) & 0xFF == ord('q'):
+		#	break
 		
 		bm = cv_ttt.boardMap(image2,A,B,C,D)
 		
