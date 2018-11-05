@@ -2,8 +2,9 @@
 This is a UR5 Demo Respository
 
 ### Enviroment
-Python version is 2.7.15.
-You have to install OpenCV3 and urx packages.
+Python version is 2.7.15. <br/>
+You have to install OpenCV3 and urx packages. <br/>
+In urrobot.py file (in urx packages), comment "...Robot Stopped..." to avoid unexpected stop.<br/>
 
 ##### tictactoe_camera.py <br/>
   Main file for Tic-Tac-Toe game demonstration on UR5 <br/>
