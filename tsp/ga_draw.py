@@ -1,4 +1,7 @@
 import numpy as np, random, operator, pandas as pd, matplotlib.pyplot as plt, cv2
+import scipy.ndimage.morphology as m
+
+#Steady-state tournament genetic algo
 
 #Create necessary classes and functions
 #Create class to handle "cities"
@@ -183,11 +186,36 @@ def geneticAlgorithmPlot(population, popSize, eliteSize, mutationRate, generatio
     plt.ylabel('Distance')
     plt.xlabel('Generation')
     plt.show()
+    
+
+def skeletonize(img):
+    h1 = np.array([[0, 0, 0],[0, 1, 0],[1, 1, 1]]) 
+    m1 = np.array([[1, 1, 1],[0, 0, 0],[0, 0, 0]]) 
+    h2 = np.array([[0, 0, 0],[1, 1, 0],[0, 1, 0]]) 
+    m2 = np.array([[0, 1, 1],[0, 0, 1],[0, 0, 0]])    
+    hit_list = [] 
+    miss_list = []
+    for k in range(4): 
+        hit_list.append(np.rot90(h1, k))
+        hit_list.append(np.rot90(h2, k))
+        miss_list.append(np.rot90(m1, k))
+        miss_list.append(np.rot90(m2, k))    
+    img = img.copy()
+    while True:
+        last = img
+        for hit, miss in zip(hit_list, miss_list): 
+            hm = m.binary_hit_or_miss(img, hit, miss) 
+            img = np.logical_and(img, np.logical_not(hm)) 
+        if np.all(img == last):  
+            break
+
+    img = np.array(img, dtype=np.uint8)
+    return img
 
 if __name__ == '__main__':
     
     cityList = []
-    img = cv2.imread('turtle.jpg')
+    img = cv2.imread('tortoise.jpg')
     img_h, img_w, img_c = img.shape
 
     draw_height = 0.20	# 20cm
@@ -199,34 +227,16 @@ if __name__ == '__main__':
     binary,contours, hierarchy =cv2.findContours(binary,cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
     # Skeletonize
-    skel = np.zeros(gray.shape,np.uint8)
-    element = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-    done = False
- 
-    while( not done):
-        eroded = cv2.erode(binary,element)
-        temp = cv2.dilate(eroded,element)
-        temp = cv2.subtract(binary,temp)
-        skel = cv2.bitwise_or(skel,temp)
-        binary = eroded.copy()
- 
-        zeros = img_h - cv2.countNonZero(binary)
-        if zeros==img_h:
-            done = True
+    skel = skeletonize(binary)
+    skel = cv2.morphologyEx(skel, cv2.MORPH_CLOSE, np.ones((5,5)))
 
-    skel = cv2.dilate(skel, np.ones((5,5))) #5
-    skel = cv2.erode(skel, np.ones((3,3)))  #3
-
-    cv2.imshow('dst',skel)
-    if cv2.waitKey(0) & 0xff == 27:
-        cv2.destroyAllWindows()
 
     # Extract contours
-    draw_cnt = []
+    draw_cnt =  []
     while True:
         _, contours, hierarchy =cv2.findContours(skel,cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         draw_cnt.append(contours[0])
-        cv2.drawContours(skel, contours, 0, 0, 11)
+        cv2.drawContours(skel, contours, 0, 0, cnt_th) #11
     
         if len(contours) < 2:
             break
@@ -236,7 +246,6 @@ if __name__ == '__main__':
     # TSP
     for i in range(len(draw_cnt)):
         cityList.append(City(x=int(draw_cnt[i][0][0][0]), y=int(draw_cnt[i][0][0][1]), i=i))
-    print cityList
 
     final_list = geneticAlgorithm(population=cityList, popSize=100, eliteSize=20, mutationRate=0.01, generations=500)
 
@@ -248,7 +257,7 @@ if __name__ == '__main__':
         color = cv2.cvtColor(np.uint8([[[n*i,255,255]]]), cv2.COLOR_HSV2BGR)
         color = color[0][0].tolist()
         cv2.drawContours(img, draw_cnt, city.index, color, cnt_th)
-        
+        cv2.circle(img,(city.x,city.y), cnt_th, [0,0,0], -1)
         cv2.imshow('dst', img)
         if cv2.waitKey(0) & 0xff == 27:
             cv2.destroyAllWindows()
